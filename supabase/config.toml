@@ -1,0 +1,4 @@
+project_id = "xyyrwzgvkzyxdczsfpqi"
+
+[db]
+# url = "postgresql://postgres:786@Bobysharma@db.xyyrwzgvkzyxdczsfpqi.supabase.co:5432/postgres"

@@ -1,0 +1,1 @@
+ALTER TABLE public.user_settings ADD COLUMN font text NOT NULL DEFAULT 'inter';
