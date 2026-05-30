@@ -468,7 +468,16 @@ export const getStreamingInfo = async (
       throw new Error('No streaming sources found for this episode');
     }
 
-    const isEmbed = matchedSource.type === 'EMBED' || matchedSource.url.includes('vidnest') || matchedSource.url.includes('embed') || !matchedSource.url.match(/\.(m3u8|mp4)/i);
+    // Detect embed sources: type EMBED (case-insensitive), or known embed domains, or non-m3u8/mp4 URLs
+    const isEmbed = 
+      (matchedSource.type || '').toUpperCase() === 'EMBED' ||
+      matchedSource.url.includes('vidnest') ||
+      matchedSource.url.includes('mp4upload') ||
+      matchedSource.url.includes('smoothpre') ||
+      matchedSource.url.includes('swiftplayers') ||
+      matchedSource.url.includes('/embed') ||
+      matchedSource.url.includes('embed-') ||
+      (!matchedSource.url.match(/\.(m3u8|mp4)(\?|$)/i));
 
     // Build the streaming link structure
     const streamingLink = [{
