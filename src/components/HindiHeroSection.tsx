@@ -85,10 +85,11 @@ const HindiHeroSection = ({ animeList, loading = false, linkPrefix = "/hindi" }:
     <section className="w-full px-2 sm:px-4 md:px-6 lg:px-10 py-2 md:py-3">
       {/* ── Card wrapper ── */}
       <div
-        className="relative w-full overflow-hidden rounded-2xl select-none
+        className="relative w-full overflow-hidden rounded-2xl select-none touch-pan-y
                    h-[220px] sm:h-[280px] md:h-[340px] lg:h-[380px]"
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
+        onPointerCancel={() => { touchRef.current = null; }}
       >
         {/* Background images (cross-fade) */}
         {spotlights.map((s, i) => (
