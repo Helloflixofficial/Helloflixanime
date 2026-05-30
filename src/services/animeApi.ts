@@ -8,8 +8,12 @@ const api = axios.create({
   timeout: 30000,
 });
 
-// Tatakai Proxy Base URL
-const TATAKAI_PROXY_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tatakai-proxy`;
+// Tatakai Proxy URL:
+// - On Vercel (production): uses /api/tatakai serverless function (no env vars needed)
+// - Locally: uses Supabase edge function if VITE_SUPABASE_URL is set, else /api/tatakai
+const TATAKAI_PROXY_URL = import.meta.env.VITE_SUPABASE_URL
+  ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tatakai-proxy`
+  : '/api/tatakai';
 
 // New streaming APIs
 const ZORO_MAPPER_URL = 'https://zoro-kir-mapper.vercel.app/api';

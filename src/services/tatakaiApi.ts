@@ -1,6 +1,9 @@
 import axios from "axios";
 
-const PROXY_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tatakai-proxy`;
+// Use Vercel serverless proxy in production, Supabase edge function locally
+const PROXY_BASE = import.meta.env.VITE_SUPABASE_URL
+  ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tatakai-proxy`
+  : '/api/tatakai';
 
 const proxyFetch = async (provider: string, path: string, query?: string) => {
   const params: Record<string, string> = { provider, path };
