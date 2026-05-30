@@ -11,6 +11,10 @@ const api = axios.create({
 // Tatakai Proxy Base URL
 const TATAKAI_PROXY_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tatakai-proxy`;
 
+// New streaming APIs
+const ZORO_MAPPER_URL = 'https://zoro-kir-mapper.vercel.app/api';
+const ZORO_TEST_URL = 'https://zoro-testn5ed.vercel.app/api';
+
 const tatakaiFetch = async (provider: string, path: string, query?: string) => {
   const params: Record<string, string> = { provider, path };
   if (query) params.q = query;
@@ -505,7 +509,9 @@ export const getProxiedUrl = (url: string, headers?: Record<string, string>): st
 export const searchAnime = async (query: string, page: number = 1) => {
   try {
     const response = await api.get(`/meta/anilist/advanced-search?query=${encodeURIComponent(query)}&page=${page}`);
-    return (response.data.results || []).map(mapToAnimeBasic);
+    const results = (response.data.results || []).map(mapToAnimeBasic);
+    const hasNextPage = response.data.pageInfo?.hasNextPage || response.data.hasNextPage || false;
+    return { data: results, hasNextPage };
   } catch (error) {
     console.error('Error searching anime:', error);
     throw error;
