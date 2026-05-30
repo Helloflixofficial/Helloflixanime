@@ -436,15 +436,14 @@ const WatchPage = () => {
                   </Button>
                 </div>
               ) : streamUrl ? (
-                (sl?.type?.toLowerCase() === "embed" || streamingData?.isEmbed) ? (
+                sl?.type === "embed" || streamingData?.isEmbed ? (
                   <iframe
                     key={streamUrl}
                     src={streamUrl}
                     className="absolute inset-0 w-full h-full border-0"
                     allowFullScreen
-                    allow="autoplay; fullscreen; encrypted-media; picture-in-picture; web-share"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-top-navigation-by-user-activation"
+                    allow="autoplay; encrypted-media; picture-in-picture; popups"
+                    referrerPolicy="no-referrer"
                   />
                 ) : (
                   <Player
