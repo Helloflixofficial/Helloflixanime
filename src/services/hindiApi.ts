@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const PROXY_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hindi-proxy`;
+const PROXY_BASE = import.meta.env.VITE_SUPABASE_URL
+  ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hindi-proxy`
+  : '/api/hindi';
 
 export interface HindiAnimeItem {
   title: string;

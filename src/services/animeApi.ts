@@ -502,7 +502,9 @@ export const getStreamingInfo = async (
 };
 
 export const getProxiedUrl = (url: string, headers?: Record<string, string>): string => {
-  const base = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/m3u8-proxy?url=${encodeURIComponent(url)}`;
+  const base = import.meta.env.VITE_SUPABASE_URL
+    ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/m3u8-proxy?url=${encodeURIComponent(url)}`
+    : `/api/m3u8?url=${encodeURIComponent(url)}`;
   if (headers && Object.keys(headers).length > 0) {
     return `${base}&headers=${encodeURIComponent(JSON.stringify(headers))}`;
   }

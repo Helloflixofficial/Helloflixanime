@@ -1,4 +1,6 @@
-const PROXY_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/peertube-proxy`;
+const PROXY_BASE = import.meta.env.VITE_SUPABASE_URL
+  ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/peertube-proxy`
+  : '/api/peertube';
 
 interface PeerTubeVideo {
   id: number;

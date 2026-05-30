@@ -4,7 +4,9 @@ import Hls from "hls.js";
 import { Loader2, AlertCircle, RefreshCw, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const PROXY_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/peertube-proxy`;
+const PROXY_BASE = import.meta.env.VITE_SUPABASE_URL
+  ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/peertube-proxy`
+  : '/api/peertube';
 
 interface PeerTubePlayerProps {
   hlsUrl: string;
