@@ -184,6 +184,10 @@ const HeroSection = () => {
               className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-widest border backdrop-blur-sm"
               style={{ borderColor: `${accentRaw}55`, color: accentRaw, background: `${accentRaw}18` }}
             >
+              ✨ AniVexa streaming
+            </span>
+
+            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold border border-white/15 bg-white/8 backdrop-blur-sm text-white/80">
               🌸 Spring 2026
             </span>
 

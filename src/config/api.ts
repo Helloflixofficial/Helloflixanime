@@ -1,23 +1,25 @@
-// API Configuration
+// The three sibling projects use this Vercel service as their catalog API.
+// Keep the URL configurable so a redeployed backend can be used without a code change.
+export const API_URL = import.meta.env.VITE_HINDMOVIES_API_URL || 'https://hindmovies-zeta.vercel.app';
 
-export const API_URL = import.meta.env.VITE_HINIME_API_URL || 'https://hinime-two.vercel.app/api';
+// The sibling Cloudflare Worker streams the mirror URLs returned by /ddl and
+// forwards Range requests so seeking works in the existing player.
+export const VIDEO_PROXY_URL =
+  import.meta.env.VITE_HINDMOVIES_VIDEO_PROXY_URL ||
+  'https://hindmovies.abdullahdaniyal.workers.dev/?url=';
 
-// Proxy server for CORS handling (subtitles, etc.)
-export const PROXY_URL = import.meta.env.VITE_ZENIME_PROXY_URL || 'https://zenime-1-qejh.onrender.com/?url=';
-
-// Our own edge function proxy (primary, most reliable — rewrites all m3u8 URLs through itself)
-export const OWN_PROXY_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/m3u8-proxy?url=`;
-
-// Primary M3U8 proxy — use own proxy only since it handles full URL rewriting
-export const M3U8_PROXY_URL = OWN_PROXY_URL;
-
-// List of M3U8 proxy servers ordered by priority
-export const M3U8_PROXIES = [
-  OWN_PROXY_URL,
-  'https://proxyfy-two.vercel.app/m3u8-proxy?url=',
-  'https://m3u8-proxy-cors-anywhere.onrender.com/cors?url=',
-  'https://cors-anywhere-oxpk.onrender.com/?url=',
-];
-
-// Timeout in ms before trying the next proxy
+// Compatibility names used by the existing player/subtitle code.
+export const PROXY_URL = VIDEO_PROXY_URL;
+export const OWN_PROXY_URL = VIDEO_PROXY_URL;
+export const M3U8_PROXY_URL = VIDEO_PROXY_URL;
+export const M3U8_PROXIES = [VIDEO_PROXY_URL];
 export const PROXY_TIMEOUT_MS = 8000;
+
+// Separate sources used by the restored Hindi route and the AniVexa streaming API.
+export const HINDI_API_BASE =
+  import.meta.env.VITE_HINDI_API_BASE ||
+  'https://tatakaiapi-one.vercel.app/api/v1/hindidubbed';
+
+export const ANIVEXA_API_URL =
+  import.meta.env.VITE_ANIVEXA_API_URL ||
+  'https://amendments-dramatically-gabriel-each.trycloudflare.com';

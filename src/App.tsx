@@ -3,19 +3,17 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Layout from "./components/Layout";
 import Index from "./pages/Index";
 import { AuthProvider, useAuth } from "./contexts/AuthProvider";
 
 // Lazy-load all non-critical pages
-const Movies = lazy(() => import("./pages/Movies"));
 const TVSeries = lazy(() => import("./pages/TVSeries"));
 const GenrePage = lazy(() => import("./pages/GenrePage"));
 const AnimeDetails = lazy(() => import("./pages/AnimeDetails"));
 const WatchPage = lazy(() => import("./pages/WatchPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const AZList = lazy(() => import("./pages/AZList"));
 const SearchPage = lazy(() => import("./pages/SearchPage"));
 const RecentlyAdded = lazy(() => import("./pages/RecentlyAdded"));
 const Contact = lazy(() => import("./pages/Contact"));
@@ -23,14 +21,13 @@ const Profile = lazy(() => import("./pages/Profile"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Auth = lazy(() => import("./pages/Auth"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const PeerTubeWatch = lazy(() => import("./pages/PeerTubeWatch"));
 const CategoryPage = lazy(() => import("./pages/CategoryPage"));
-const Hindi = lazy(() => import("./pages/Hindi"));
-const HindiWatch = lazy(() => import("./pages/HindiWatch"));
-const AnimeyaPage = lazy(() => import("./pages/AnimeyaPage"));
-const AnimeyaWatch = lazy(() => import("./pages/AnimeyaWatch"));
 const AboutUs = lazy(() => import("./pages/AboutUs"));
 const UserProfile = lazy(() => import("./pages/UserProfile"));
+const Hindi = lazy(() => import("./pages/Hindi"));
+const HindiWatch = lazy(() => import("./pages/HindiWatch"));
+const AniVexaHome = lazy(() => import("./pages/AniVexaHome"));
+const AniVexaPage = lazy(() => import("./pages/AniVexaPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,8 +48,11 @@ const PageLoader = () => (
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <PageLoader />;
-  if (!user) return <Navigate to="/auth" replace />;
+  if (!user) {
+    return <Navigate to="/auth" replace state={{ from: { pathname: location.pathname, search: location.search } }} />;
+  }
   return <>{children}</>;
 };
 
@@ -67,26 +67,24 @@ const App = () => (
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/most-popular" element={<Hindi />} />
-              <Route path="/movies" element={<Movies />} />
+              <Route path="/most-popular" element={<Navigate to="/category/most-popular" replace />} />
               <Route path="/tv-series" element={<TVSeries />} />
               <Route path="/genre/:genreName" element={<GenrePage />} />
               <Route path="/anime/:id" element={<AnimeDetails />} />
               <Route path="/watch/:id" element={<WatchPage />} />
-              <Route path="/uploads" element={<AZList />} />
               <Route path="/recently-added" element={<RecentlyAdded />} />
+              <Route path="/hindi" element={<Hindi />} />
+              <Route path="/hindi/:slug" element={<HindiWatch />} />
+              <Route path="/anivexa" element={<AniVexaHome />} />
+              <Route path="/anivexa/:id" element={<AniVexaPage />} />
+              <Route path="/type/:format" element={<CategoryPage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/pt-watch/:uuid" element={<PeerTubeWatch />} />
               <Route path="/category/:category" element={<CategoryPage />} />
-              <Route path="/hindi" element={<Hindi />} />
-              <Route path="/hindi/:slug" element={<HindiWatch />} />
-              <Route path="/animeya" element={<AnimeyaPage />} />
-              <Route path="/animeya/:slug" element={<AnimeyaWatch />} />
               <Route path="/about" element={<AboutUs />} />
               <Route path="/user/:userId" element={<UserProfile />} />
               <Route path="*" element={<NotFound />} />

@@ -62,7 +62,6 @@ const ServerSelector = ({
                   onTypeChange(type);
                   onServerChange(serverId, type);
                 }}
-                disabled={loading}
                 className={`h-8 text-xs transition-all ${
                   isActive
                     ? "shadow-[0_0_12px_hsl(var(--primary)/0.4)]"
@@ -80,7 +79,7 @@ const ServerSelector = ({
   };
 
   return (
-    <div className="glass-panel rounded-xl p-4 space-y-4">
+    <div className="glass-panel rounded-xl p-4 space-y-4" aria-busy={loading}>
       <p className="text-center text-sm text-muted-foreground">
         You're watching{" "}
         <span className="text-primary font-semibold">Episode {episodeNumber}</span>.

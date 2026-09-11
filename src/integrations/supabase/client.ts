@@ -2,8 +2,57 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const configuredSupabaseUrl = String(import.meta.env.VITE_SUPABASE_URL ?? '').trim();
+const configuredSupabaseKey = String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '').trim();
+
+export const supabaseConfigError =
+  !configuredSupabaseUrl || !configuredSupabaseKey
+    ? 'Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to the environment.'
+    : null;
+
+// Keep the module importable when a deployment is missing its environment variables.
+// Auth actions will return a useful error instead of crashing the whole React app.
+const SUPABASE_URL = configuredSupabaseUrl || 'https://missing-supabase-project.invalid';
+const SUPABASE_PUBLISHABLE_KEY = configuredSupabaseKey || 'missing-supabase-key';
+
+export function getAuthRedirectUrl(path = '/auth') {
+  const configuredRedirect = String(import.meta.env.VITE_AUTH_REDIRECT_URL ?? '').trim();
+
+  if (configuredRedirect) {
+    try {
+      return new URL(configuredRedirect, window.location.origin).toString();
+    } catch {
+      // Fall back to the current origin when an optional redirect variable is malformed.
+    }
+  }
+
+  return new URL(path, window.location.origin).toString();
+}
+
+export function getAuthErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  const normalized = message.toLowerCase();
+
+  if (supabaseConfigError) return supabaseConfigError;
+
+  if (normalized.includes('unsupported provider') || normalized.includes('provider is not enabled')) {
+    return 'Google sign-in is not enabled in Supabase. Enable Google under Authentication → Providers and add its OAuth credentials.';
+  }
+
+  if (normalized.includes('redirect_to_not_allowed') || normalized.includes('redirect url not allowed')) {
+    return 'This site is not in Supabase Auth redirect URLs. Add the localhost and Vercel /auth URLs in Authentication → URL Configuration.';
+  }
+
+  if (
+    normalized.includes('failed to fetch') ||
+    normalized.includes('networkerror') ||
+    normalized.includes('network request failed')
+  ) {
+    return 'The authentication server cannot be reached. Check the Supabase URL and make sure the project is active.';
+  }
+
+  return message || 'Authentication failed. Please try again.';
+}
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +63,6 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    flowType: 'implicit',
+    flowType: 'pkce',
   }
 });

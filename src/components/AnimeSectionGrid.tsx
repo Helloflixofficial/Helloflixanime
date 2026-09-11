@@ -15,6 +15,7 @@ interface AnimeSectionGridProps {
   loading?: boolean;
   showRank?: boolean;
   limit?: number;
+  linkPrefix?: string;
 }
 
 const AnimeSectionGrid = memo(({
@@ -26,6 +27,7 @@ const AnimeSectionGrid = memo(({
   loading = false,
   showRank = false,
   limit = 12,
+  linkPrefix = "/anime",
 }: AnimeSectionGridProps) => {
   const displayList = useMemo(() => animeList.slice(0, limit), [animeList, limit]);
 
@@ -96,6 +98,7 @@ const AnimeSectionGrid = memo(({
                   type={anime.tvInfo?.showType || "TV"}
                   subtitle={subCount > 0 ? "SUB" : undefined}
                   isDubbed={dubCount > 0}
+                  linkPrefix={linkPrefix}
                   className="h-full"
                 />
               </div>

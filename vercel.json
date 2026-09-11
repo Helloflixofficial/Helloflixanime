@@ -30,7 +30,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' https://*.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://s4.anilist.co https://*.supabase.co https://img.youtube.com https://*.ngrok-free.dev; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https://*.supabase.co https://anilistapi.vercel.app https://tatakaiapi-one.vercel.app https://graphql.anilist.co https://*.ngrok-free.dev https://zenime-1-qejh.onrender.com; frame-src 'self' https://www.youtube.com https://*.ngrok-free.dev; media-src 'self' blob: https://*.supabase.co https://*.ngrok-free.dev;"
+          "value": "default-src 'self'; script-src 'self' https://*.supabase.co https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://hindmovie.fit https://*.supabase.co https://i.ibb.co; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https://*.supabase.co https://hindmovies-zeta.vercel.app https://hindmovies.abdullahdaniyal.workers.dev https://cdn.jsdelivr.net; worker-src 'self' blob:; frame-src 'self'; media-src 'self' blob: https://hindmovies.abdullahdaniyal.workers.dev;"
         },
         {
           "key": "X-Frame-Options",
@@ -56,6 +56,6 @@
     }
   ],
   "rewrites": [
-    { "source": "/(.*)", "destination": "/" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import Player from "@/components/player/Player";
+import MoviPlayer from "@/components/player/MoviPlayer";
 import EpisodeList from "@/components/watch/EpisodeList";
 import ServerSelector from "@/components/watch/ServerSelector";
 import WatchControls from "@/components/watch/WatchControls";
@@ -10,16 +10,13 @@ import RelatedAnime from "@/components/watch/RelatedAnime";
 import AnimeInfoSection from "@/components/watch/AnimeInfoSection";
 import CommentSection from "@/components/watch/CommentSection";
 import RatingSection from "@/components/watch/RatingSection";
-import { getEpisodes, getStreamingInfo, getAnimeDetails, getServers, getProxiedUrl } from "@/services/animeApi";
-import { getFallbackStream } from "@/services/tatakaiApi";
+import { clearDdlCache, getEpisodes, getStreamingInfo, getAnimeDetails } from "@/services/animeApi";
 import type { Episode, Server, AnimeBasic } from "@/types/anime";
 import { Skeleton } from "@/components/ui/skeleton";
 import { saveWatchProgress } from "@/services/userDataService";
 
 const slugifyServer = (name?: string) =>
   (name || "").toString().trim().toLowerCase().replace(/\s+/g, "-");
-
-const STREAM_LOAD_TIMEOUT_MS = 15000; // 15s before trying next server
 
 const WatchPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -35,7 +32,7 @@ const WatchPage = () => {
   const currentEpisode = episodes.find((ep) => ep.episode_no === currentEpisodeNo);
   const [currentType, setCurrentType] = useState<"sub" | "dub">("sub");
   const [servers, setServers] = useState<Server[]>([]);
-  const [currentServer, setCurrentServer] = useState<string>("hd-1");
+  const [currentServer, setCurrentServer] = useState<string>("server-1");
   const [streamingData, setStreamingData] = useState<any>(null);
   const [loadingAnime, setLoadingAnime] = useState(true);
   const [loadingEpisodes, setLoadingEpisodes] = useState(true);
@@ -45,8 +42,10 @@ const WatchPage = () => {
   const [autoSkip, setAutoSkip] = useState(() => localStorage.getItem("autoSkip") !== "false");
   const [streamError, setStreamError] = useState(false);
   const [allServersFailed, setAllServersFailed] = useState(false);
+  const [streamRetry, setStreamRetry] = useState(0);
   const failedServersRef = useRef<Set<string>>(new Set());
-  const fallbackTimeoutRef = useRef<any>(null);
+  const streamRequestIdRef = useRef(0);
+  const freshMirrorRetryRef = useRef(0);
 
   // Persist toggle preferences
   useEffect(() => { localStorage.setItem("autoPlay", String(autoPlay)); }, [autoPlay]);
@@ -108,39 +107,14 @@ const WatchPage = () => {
   // Reset failed servers on episode change
   useEffect(() => {
     failedServersRef.current.clear();
+    freshMirrorRetryRef.current = 0;
     setAllServersFailed(false);
     setStreamError(false);
+    setStreamingData(null);
+    setServers([]);
+    setCurrentServer("server-1");
+    setCurrentType("sub");
   }, [currentEpisodeNo]);
-
-  // Fetch servers
-  useEffect(() => {
-    const fetchServers = async () => {
-      const episodeApiId = getEpisodeIdForApi();
-      if (!episodeApiId) return;
-      try {
-        const serverList = await getServers(episodeApiId);
-        if (serverList && serverList.length > 0) {
-          setServers(serverList);
-          const subServers = serverList.filter((s) => s.type === "sub");
-          const dubServers = serverList.filter((s) => s.type === "dub");
-          if (currentType === "sub" && subServers.length > 0) {
-            setCurrentServer(slugifyServer(subServers[0].server_name || subServers[0].serverName));
-          } else if (currentType === "dub" && dubServers.length > 0) {
-            setCurrentServer(slugifyServer(dubServers[0].server_name || dubServers[0].serverName));
-          } else if (subServers.length > 0) {
-            setCurrentType("sub");
-            setCurrentServer(slugifyServer(subServers[0].server_name || subServers[0].serverName));
-          } else if (dubServers.length > 0) {
-            setCurrentType("dub");
-            setCurrentServer(slugifyServer(dubServers[0].server_name || dubServers[0].serverName));
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch servers:", error);
-      }
-    };
-    fetchServers();
-  }, [currentEpisode?.id, getEpisodeIdForApi]);
 
   const getNextServer = useCallback((): { serverId: string; type: "sub" | "dub" } | null => {
     const currentKey = `${currentType}:${currentServer}`;
@@ -170,73 +144,54 @@ const WatchPage = () => {
       setCurrentType(next.type);
       setCurrentServer(next.serverId);
       setStreamError(false);
+      setStreamingData(null);
+      setLoadingStream(true);
     } else {
-      console.log("[AutoFallback] All servers failed. Attempting Tatakai fallback...");
-      const animeTitle = anime?.name || anime?.title || anime?.jname || anime?.japanese_title;
-      if (animeTitle && currentEpisodeNo) {
+      // Mirror URLs rotate and an entire resolver response can contain stale
+      // or invalid file IDs. Refresh the resolver once before showing the
+      // terminal error state to the user.
+      const episodeApiId = getEpisodeIdForApi();
+      if (episodeApiId && freshMirrorRetryRef.current < 1) {
+        freshMirrorRetryRef.current += 1;
+        clearDdlCache(episodeApiId);
+        failedServersRef.current.clear();
+        setAllServersFailed(false);
+        setStreamingData(null);
         setLoadingStream(true);
-        try {
-          // Fallback to Tatakai Animeya provider
-          const fallbackStreams = await getFallbackStream(animeTitle, currentEpisodeNo);
-          if (fallbackStreams && fallbackStreams.length > 0) {
-            console.log("[AutoFallback] Successfully fetched fallback stream");
-            const fallbackInfo = {
-              servers: fallbackStreams.map(s => ({
-                  type: "sub",
-                  data_id: "fallback-" + s.name,
-                  server_id: "fallback-" + s.name,
-                  serverName: s.name + " (Tatakai)"
-              })),
-              streamingLink: fallbackStreams.map(s => ({
-                  link: { file: s.url },
-                  type: "hls", 
-              })),
-              fallback: true,
-            };
-            setStreamingData(fallbackInfo);
-            setAllServersFailed(false);
-            setStreamError(false);
-            setLoadingStream(false);
-            return;
-          }
-        } catch (e) {
-          console.error("Fallback attempt failed:", e);
-        }
+        setCurrentType("sub");
+        setCurrentServer("server-1");
+        setStreamRetry((value) => value + 1);
+        return;
       }
-      
-      console.log("[AutoFallback] All servers and fallback failed");
+      console.log("[AutoFallback] All HindMovies servers failed");
       setAllServersFailed(true);
       setLoadingStream(false);
     }
-  }, [getNextServer, anime, currentEpisodeNo]);
+  }, [getEpisodeIdForApi, getNextServer]);
 
   // Fetch streaming info with timeout fallback
   useEffect(() => {
     const fetchStream = async () => {
+      const requestId = ++streamRequestIdRef.current;
       const episodeApiId = getEpisodeIdForApi();
       if (!episodeApiId || !currentServer) return;
       setLoadingStream(true);
       setStreamError(false);
 
-      // Clear previous timeout
-      if (fallbackTimeoutRef.current) clearTimeout(fallbackTimeoutRef.current);
-
-      // Set a timeout - if stream doesn't load in time, try next server
-      fallbackTimeoutRef.current = setTimeout(() => {
-        console.log(`[AutoFallback] Timeout on ${currentType}:${currentServer}`);
-        tryNextServer();
-      }, STREAM_LOAD_TIMEOUT_MS);
-
       try {
         const info = await getStreamingInfo(episodeApiId, currentServer, currentType);
+        if (requestId !== streamRequestIdRef.current) return;
         
-        // Merge servers from streaming response (may have more servers)
+        // The single DDL response already contains every mirror. Populate the
+        // selector immediately after the first server URL is ready; never make
+        // a second resolver request just to discover the other buttons.
         if (info.servers && info.servers.length > 0) {
-          setServers(prev => {
-            // Merge: keep existing + add new ones
-            const existingIds = new Set(prev.map(s => `${s.type}:${s.data_id}`));
-            const newServers = info.servers.filter(s => !existingIds.has(`${s.type}:${s.data_id}`));
-            return newServers.length > 0 ? [...prev, ...newServers] : prev;
+          setServers((previous) => {
+            const unchanged = previous.length === info.servers.length && previous.every((server, index) => {
+              const next = info.servers[index];
+              return next && server.type === next.type && server.data_id === next.data_id;
+            });
+            return unchanged ? previous : info.servers;
           });
         }
 
@@ -245,29 +200,27 @@ const WatchPage = () => {
         if (!streamUrl) {
           // No stream URL - try next server
           console.log(`[AutoFallback] No stream URL from ${currentType}:${currentServer}`);
-          if (fallbackTimeoutRef.current) clearTimeout(fallbackTimeoutRef.current);
           tryNextServer();
           return;
         }
 
-        if (fallbackTimeoutRef.current) clearTimeout(fallbackTimeoutRef.current);
         setStreamingData(info);
       } catch (error) {
+        if (requestId !== streamRequestIdRef.current) return;
         console.error("Failed to fetch streaming info:", error);
-        if (fallbackTimeoutRef.current) clearTimeout(fallbackTimeoutRef.current);
         // Auto-fallback on error
         tryNextServer();
         return;
       } finally {
-        setLoadingStream(false);
+        if (requestId === streamRequestIdRef.current) setLoadingStream(false);
       }
     };
     fetchStream();
 
     return () => {
-      if (fallbackTimeoutRef.current) clearTimeout(fallbackTimeoutRef.current);
+      streamRequestIdRef.current += 1;
     };
-  }, [currentEpisode?.id, currentServer, currentType, getEpisodeIdForApi, tryNextServer]);
+  }, [currentEpisode?.id, currentServer, currentType, getEpisodeIdForApi, streamRetry, tryNextServer]);
 
   const handleEpisodeChange = useCallback((episodeNo: number) => {
     setCurrentEpisodeNo(episodeNo);
@@ -284,18 +237,12 @@ const WatchPage = () => {
     if (idx < episodes.length - 1) handleEpisodeChange(episodes[idx + 1].episode_no);
   };
 
-  const playNextEpisode = useCallback(
-    (nextEpId: string) => {
-      const match = nextEpId.match(/ep=(\d+)/);
-      if (match) handleEpisodeChange(parseInt(match[1]));
-    },
-    [handleEpisodeChange]
-  );
-
   const handleServerChange = (serverId: string, type: "sub" | "dub") => {
     failedServersRef.current.clear();
     setAllServersFailed(false);
     setStreamError(false);
+    setStreamingData(null);
+    setLoadingStream(true);
     setCurrentServer(serverId);
     setCurrentType(type);
   };
@@ -312,6 +259,12 @@ const WatchPage = () => {
     failedServersRef.current.clear();
     setAllServersFailed(false);
     setStreamError(false);
+    const episodeApiId = getEpisodeIdForApi();
+    if (episodeApiId) clearDdlCache(episodeApiId);
+    freshMirrorRetryRef.current = 0;
+    setStreamingData(null);
+    setLoadingStream(true);
+    setStreamRetry((value) => value + 1);
     // Re-trigger by resetting to first server
     const subServers = servers.filter((s) => s.type === "sub");
     if (subServers.length > 0) {
@@ -322,16 +275,7 @@ const WatchPage = () => {
 
   const sl = Array.isArray(streamingData?.streamingLink) ? streamingData.streamingLink[0] : streamingData?.streamingLink;
   const defaultStreamUrl = sl?.link?.file;
-  const allTracks = sl?.tracks || [];
-  const defaultSubtitles = allTracks.filter((t: any) => t.kind === "captions" || t.kind === "subtitles");
-  const thumbnailTrack = allTracks.find((t: any) => t.kind === "thumbnails");
-  const intro = sl?.intro;
-  const outro = sl?.outro;
-  const thumbnail = thumbnailTrack?.file || sl?.thumbnail;
-
   const streamUrl = defaultStreamUrl;
-  const subtitles = defaultSubtitles;
-
   const currentIdx = episodes.findIndex((ep) => ep.episode_no === currentEpisodeNo);
   const hasPrev = currentIdx > 0;
   const hasNext = currentIdx < episodes.length - 1;
@@ -446,25 +390,11 @@ const WatchPage = () => {
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <Player
+                  <MoviPlayer
                     streamUrl={streamUrl}
-                    subtitles={subtitles}
-                    thumbnail={thumbnail}
-                    intro={intro}
-                    outro={outro}
-                    autoSkipIntro={autoSkip}
                     autoPlay={autoPlay}
-                    autoNext={autoNext}
-                    episodeId={String(currentEpisodeNo)}
-                    episodes={episodes.map((ep) => ({
-                      ...ep,
-                      id: `${id}?ep=${ep.data_id}`,
-                    }))}
-                    playNext={playNextEpisode}
-                    animeInfo={anime}
-                    episodeNum={currentEpisodeNo}
-                    streamInfo={streamingData}
-                    onStreamError={tryNextServer}
+                    title={`${anime?.title || "Video"} Episode ${currentEpisodeNo}`}
+                    onError={tryNextServer}
                   />
                 )
               ) : (

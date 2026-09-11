@@ -29,6 +29,8 @@ export interface AnimeBasic {
   adultContent?: boolean;
   genres?: string[];
   score?: number;
+  ongoing?: boolean;
+  category?: string | null;
 }
 
 export interface AnimeInfo {
@@ -64,6 +66,8 @@ export interface Episode {
   jname: string;
   title: string;
   japanese_title: string;
+  filename?: string;
+  mvlink_id?: string;
 }
 
 export interface StreamTrack {
@@ -97,6 +101,8 @@ export interface Server {
 export interface StreamingInfo {
   streamingLink: StreamLink[];
   servers: Server[];
+  mediaType?: "hls" | "mp4" | "webm" | "mkv" | "unknown";
+  sourceFilename?: string;
 }
 
 export interface HomeData {

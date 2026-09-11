@@ -1,42 +1,30 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
 import AnimeCard from "@/components/AnimeCard";
-import { getAnimeByCategory } from "@/services/animeApi";
-
-const CATEGORY_MAP: Record<string, { apiPath: string; title: string }> = {
-  trending: { apiPath: "top-airing", title: "Trending Now" },
-  "top-airing": { apiPath: "top-airing", title: "Top Airing" },
-  "most-popular": { apiPath: "most-popular", title: "Most Popular" },
-  "most-favorite": { apiPath: "most-favorite", title: "Most Favorite" },
-  completed: { apiPath: "completed", title: "Recently Completed" },
-  "recently-updated": { apiPath: "recently-updated", title: "Latest Episodes" },
-  movie: { apiPath: "movie", title: "Movies" },
-  special: { apiPath: "special", title: "Specials" },
-  ova: { apiPath: "ova", title: "OVA" },
-  ona: { apiPath: "ona", title: "ONA" },
-  tv: { apiPath: "tv", title: "TV Series" },
-  music: { apiPath: "music", title: "Music" },
-};
+import { getAnimeByCategory, getCategoryTitle } from "@/services/animeApi";
+import { getAniVexaByFormat } from "@/services/anilistCatalog";
+import type { AnimeBasic } from "@/types/anime";
 
 const CategoryPage = () => {
-  const { category } = useParams<{ category: string }>();
+  const { category = "all", format } = useParams<{ category: string; format?: string }>();
   const navigate = useNavigate();
-  const [animes, setAnimes] = useState<any[]>([]);
+  const [animes, setAnimes] = useState<AnimeBasic[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [filter, setFilter] = useState<"all" | "sub" | "dub">("all");
 
-  const config = CATEGORY_MAP[category || ""] || { apiPath: category || "", title: category || "" };
+  const aniVexaFormat = format?.toLowerCase() === "movie" ? "MOVIE" : format?.toLowerCase() === "tv" ? "TV" : undefined;
+  const title = aniVexaFormat === "MOVIE" ? "Anime Movies" : aniVexaFormat === "TV" ? "TV Anime Series" : getCategoryTitle(category);
 
-  const fetchData = async (pageNum: number, append = false) => {
+  const fetchData = useCallback(async (pageNum: number, append = false) => {
     if (append) setLoadingMore(true); else setLoading(true);
     try {
-      const data = await getAnimeByCategory(config.apiPath, pageNum);
-      const list = data?.data || data?.animes || [];
+      const data = aniVexaFormat ? await getAniVexaByFormat(aniVexaFormat, pageNum) : await getAnimeByCategory(category, pageNum);
+      const list = data?.data || [];
       if (append) {
         setAnimes(prev => [...prev, ...list]);
       } else {
@@ -49,14 +37,14 @@ const CategoryPage = () => {
       setLoading(false);
       setLoadingMore(false);
     }
-  };
+  }, [aniVexaFormat, category]);
 
   useEffect(() => {
     setAnimes([]);
     setPage(1);
     setLoading(true);
     fetchData(1);
-  }, [category]);
+  }, [category, fetchData]);
 
   const loadMore = () => {
     const nextPage = page + 1;
@@ -64,7 +52,7 @@ const CategoryPage = () => {
     fetchData(nextPage, true);
   };
 
-  const filteredAnimes = animes.filter((anime: any) => {
+  const filteredAnimes = animes.filter((anime) => {
     const subCount = anime.tvInfo?.episodeInfo?.sub || anime.tvInfo?.sub || 0;
     const dubCount = anime.tvInfo?.episodeInfo?.dub || anime.tvInfo?.dub || 0;
     if (filter === "dub" && dubCount <= 0) return false;
@@ -84,7 +72,7 @@ const CategoryPage = () => {
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-2xl md:text-3xl font-bold">{config.title}</h1>
+        <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>
 
         {/* Sub/Dub/All */}
         <div className="flex gap-1.5 ml-auto">
@@ -111,7 +99,7 @@ const CategoryPage = () => {
       {!loading && (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
-            {filteredAnimes.map((anime: any) => {
+            {filteredAnimes.map((anime) => {
               const subCount = anime.tvInfo?.episodeInfo?.sub || anime.tvInfo?.sub || 0;
               const dubCount = anime.tvInfo?.episodeInfo?.dub || anime.tvInfo?.dub || 0;
               const totalEps = anime.tvInfo?.eps || subCount + dubCount;
@@ -120,12 +108,13 @@ const CategoryPage = () => {
                 <AnimeCard
                   key={anime.id}
                   id={anime.id}
-                  title={anime.name || anime.title}
-                  image={anime.poster || anime.image}
+                  title={anime.title}
+                  image={anime.poster}
                   episodes={totalEps}
                   type={anime.tvInfo?.showType || "TV"}
                   subtitle={subCount > 0 ? "SUB" : undefined}
                   isDubbed={dubCount > 0}
+                  linkPrefix={aniVexaFormat ? "/anivexa" : undefined}
                 />
               );
             })}

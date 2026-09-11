@@ -1,13 +1,13 @@
 # 🎬 Helloflix - Premium Anime & Movie Platform
 
-Welcome to **Helloflix**, a high-performance, modern web application for streaming anime and movies. Built with the latest tech stack, it features seamless multi-server support, Hindi dubbed content, and a premium glassmorphic UI.
+Welcome to **Helloflix**, a high-performance, modern web application for streaming series and anime. Built with the latest tech stack, it uses the sibling HindMovies catalog API, multi-server playback, and a premium glassmorphic UI.
 
 ---
 
 ## ✨ Features
 
 - 🎌 **Extensive Anime Library**: Trending, popular, and seasonal anime directly from high-speed APIs.
-- 🇮🇳 **Hindi Dubbed Section**: Dedicated focus on Hindi-speaking audiences with a clean, organized layout.
+- 🎬 **Series and Anime Catalog**: Live scraped catalog data from the sibling HindMovies API, including animation, Korean, and Chinese series.
 - 🚀 **Edge-Powered Proxies**: Secure video streaming and data fetching via Supabase Edge Functions.
 - 🌓 **Dynamic Themes**: Beautiful light and dark modes with unique glassmorphism aesthetics.
 - 📱 **Fully Responsive**: Optimized for Mobile, Tablet, and Desktop viewing.
@@ -64,27 +64,27 @@ Create a file named `.env` in the root folder and add your keys:
 VITE_SUPABASE_URL=your-project-url
 VITE_SUPABASE_PUBLISHABLE_KEY=your-anon-key
 
-# API Settings
-VITE_HINIME_API_URL=https://hinime-two.vercel.app/api
-VITE_ZENIME_PROXY_URL=https://zenime-1-qejh.onrender.com/?url=
+# Optional: use the current origin automatically when this is empty
+VITE_AUTH_REDIRECT_URL=
+
+# HindMovies API Settings
+VITE_HINDMOVIES_API_URL=https://hindmovies-zeta.vercel.app
+VITE_HINDMOVIES_VIDEO_PROXY_URL=https://hindmovies.abdullahdaniyal.workers.dev/?url=
 ```
 
 ### 4️⃣ Supabase Configuration (Crucial)
-To make the video player and Hindi section work, you must setup your Supabase project:
+To make authentication, favorites, comments, and watch history work, you must set up your Supabase project:
 
 1.  **Database**: Go to the **SQL Editor** in your Supabase dashboard and run the code provided in `MIGRATION_GUIDE.md`.
-2.  **Secrets**: The edge functions need the private API key. Set it in your dashboard or via CLI:
-    ```bash
-    npx supabase secrets set TATAKAI_API_URL="https://tatakaiapi-one.vercel.app/api/v1"
-    ```
-3.  **Edge Functions**: Deploy the proxy functions:
-    ```bash
-    npx supabase functions deploy tatakai-proxy
-    npx supabase functions deploy hindi-proxy
-    npx supabase functions deploy m3u8-proxy
-    npx supabase functions deploy peertube-proxy
-    npx supabase functions deploy embed-proxy
-    ```
+2.  **Playback**: The catalog is served by the sibling Vercel API and video URLs are streamed through the sibling Cloudflare Worker configured above. No catalog edge function deployment is required.
+3.  **Auth URLs**: In Supabase **Authentication → URL Configuration**, add these redirect URLs:
+    - `http://localhost:5173/auth`
+    - `http://localhost:5173/reset-password`
+    - `https://helloflix.in/auth`
+    - `https://helloflix.in/reset-password`
+4.  Set the Supabase Site URL to `https://helloflix.in`. Enable the Email provider. For Google login, enable **Google** under **Authentication → Providers**, then add the Google OAuth client ID and secret. In Google Cloud Console, add this authorized redirect URI:
+    - `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`
+5.  Add the localhost and Vercel URLs above to Supabase **Authentication → URL Configuration**. Google itself redirects to the Supabase callback; Supabase then redirects back to this app's `/auth` route.
 
 ### 5️⃣ Run the App
 ```bash
@@ -95,7 +95,7 @@ Open [http://localhost:8080](http://localhost:8080) in your browser! 🚀
 ---
 
 ## 📖 Deployment
-Simply push your changes to GitHub and connect your repository to **Vercel**, **Netlify**, or **Cloudflare Pages**. Remember to add your `.env` variables to the deployment settings.
+Simply push your changes to GitHub and connect your repository to **Vercel**, **Netlify**, or **Cloudflare Pages**. Add `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_HINDMOVIES_API_URL`, and `VITE_HINDMOVIES_VIDEO_PROXY_URL` to the deployment settings, then redeploy. The app uses the current deployment origin for auth callbacks, so the same build works on localhost and Vercel.
 
 ---
 

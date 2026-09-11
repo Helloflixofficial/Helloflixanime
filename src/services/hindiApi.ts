@@ -1,6 +1,5 @@
 import axios from "axios";
-
-const PROXY_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/hindi-proxy`;
+import { HINDI_API_BASE } from "@/config/api";
 
 export interface HindiAnimeItem {
   title: string;
@@ -31,81 +30,71 @@ export interface HindiAnimeDetail {
   episodes: HindiEpisode[];
 }
 
-export interface HindiHomeSection {
-  title: string;
-  anime: HindiAnimeItem[];
-}
+const api = axios.create({ baseURL: HINDI_API_BASE, timeout: 30000 });
+const isJunkTitle = (title: string) => title.toLowerCase().includes("anime hindi world") || title.includes("𝔸𝕟𝕚𝕞𝕖 ℍ𝕚𝕟𝕕𝕚");
 
-const proxyFetch = async (path: string, query?: string) => {
-  const params: Record<string, string> = { path };
-  if (query) params.q = query;
-  const { data } = await axios.get(PROXY_BASE, { params });
-  return data;
-};
+const cleanTitle = (title: string, slug: string) =>
+  !title || isJunkTitle(title)
+    ? slug.replace(/-/g, " ").replace(/\b\w/g, (character) => character.toUpperCase())
+    : title;
 
-const JUNK_TITLES = ["𝔸𝕟𝕚𝕞𝕖 ℍ𝕚𝕟𝕕𝕚 𝕎𝕠𝕣𝕝𝕕", "anime hindi world"];
-
-const slugToTitle = (slug: string) =>
-  slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-
-const cleanTitle = (title: string, slug: string) => {
-  if (!title || JUNK_TITLES.some((j) => title.toLowerCase().includes(j.toLowerCase()))) {
-    return slugToTitle(slug);
-  }
-  return title;
-};
-
-const normalizeItems = (items: any[]): HindiAnimeItem[] =>
-  items.map((item: any) => ({
-    title: cleanTitle(item.title || "", item.slug || ""),
-    slug: item.slug || "",
-    url: item.url,
-    thumbnail: item.poster || item.thumbnail || item.image || "",
-    categories: item.categories,
-  }));
-
-export const fetchHindiHome = async (): Promise<HindiAnimeItem[]> => {
-  const data = await proxyFetch("home");
-  const d = data?.data;
-  if (!d) return [];
-
-  // Collect from all keys that are arrays of objects with slug
-  const allItems: any[] = [];
-  if (d && typeof d === "object") {
-    for (const key of Object.keys(d)) {
-      if (Array.isArray(d[key]) && d[key].length > 0 && d[key][0]?.slug) {
-        allItems.push(...d[key]);
-      }
-    }
-  }
-  if (allItems.length > 0) return normalizeItems(allItems);
-
-  if (d?.sections) {
-    return normalizeItems(d.sections.flatMap((s: any) => s.anime || []));
-  }
-  return [];
-};
-
-export const searchHindiAnime = async (query: string): Promise<HindiAnimeItem[]> => {
-  const data = await proxyFetch("search", query);
-  return data?.data?.animeList || [];
-};
-
-export const fetchHindiAnimeDetail = async (slug: string): Promise<HindiAnimeDetail | null> => {
-  const data = await proxyFetch(`anime/${slug}`);
-  const d = data?.data;
-  if (!d) return null;
+const normalizeItem = (item: Record<string, unknown>): HindiAnimeItem => {
+  const slug = String(item.slug || "");
   return {
-    ...d,
-    title: cleanTitle(d.title || "", d.slug || slug),
-    thumbnail: d.poster || d.thumbnail || d.image || "",
-    description: JUNK_TITLES.some((j) => (d.description || "").toLowerCase().includes(j.toLowerCase()))
-      ? ""
-      : d.description || "",
+    title: cleanTitle(String(item.title || ""), slug),
+    slug,
+    url: typeof item.url === "string" ? item.url : undefined,
+    thumbnail: String(item.poster || item.thumbnail || item.image || "/placeholder.svg"),
+    categories: Array.isArray(item.categories) ? item.categories.filter((value): value is string => typeof value === "string") : [],
   };
 };
 
-export const fetchHindiCategory = async (name: string): Promise<HindiAnimeItem[]> => {
-  const data = await proxyFetch(`category/${name}`);
-  return data?.data?.anime || [];
+const getData = async (path: string, title?: string) => {
+  const { data } = await api.get(path, title ? { params: { title } } : undefined);
+  return data?.data;
+};
+
+export const fetchHindiHome = async (): Promise<HindiAnimeItem[]> => {
+  const data = await getData("/home");
+  const featured = Array.isArray(data?.featured) ? data.featured : [];
+  return featured
+    .filter((item: unknown): item is Record<string, unknown> => Boolean(item && typeof item === "object" && "slug" in item))
+    .map(normalizeItem);
+};
+
+export const searchHindiAnime = async (query: string): Promise<HindiAnimeItem[]> => {
+  const data = await getData("/search", query);
+  return Array.isArray(data?.animeList)
+    ? data.animeList
+        .filter((item: unknown): item is Record<string, unknown> => Boolean(item && typeof item === "object"))
+        .map(normalizeItem)
+    : [];
+};
+
+export const fetchHindiAnimeDetail = async (slug: string): Promise<HindiAnimeDetail | null> => {
+  const data = await getData(`/anime/${encodeURIComponent(slug)}`);
+  if (!data || typeof data !== "object") return null;
+  const record = data as Record<string, unknown>;
+  return {
+    title: cleanTitle(String(record.title || ""), slug),
+    slug: String(record.slug || slug),
+    thumbnail: String(record.poster || record.thumbnail || record.image || "/placeholder.svg"),
+    description: String(record.description || ""),
+    rating: typeof record.rating === "string" ? record.rating : undefined,
+    episodes: Array.isArray(record.episodes)
+      ? record.episodes.map((episode: Record<string, unknown>) => ({
+          number: Number(episode.number || 0),
+          title: String(episode.title || `Episode ${episode.number || ""}`),
+          servers: Array.isArray(episode.servers)
+            ? episode.servers
+                .map((server: Record<string, unknown>) => ({
+                  name: String(server.name || "Server"),
+                  url: String(server.url || ""),
+                  language: String(server.language || "Hindi"),
+                }))
+                .filter((server: HindiEpisodeServer) => Boolean(server.url))
+            : [],
+        }))
+      : [],
+  };
 };

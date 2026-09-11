@@ -1,4 +1,4 @@
-import { Home, List, Film, Tv, Settings, HelpCircle, User, Play, X, ChevronDown, Compass, Clock, Languages, Clapperboard, Star, Sparkles, Radio, Music, Monitor } from "lucide-react";
+import { Home, Film, Tv, Settings, HelpCircle, User, Play, X, ChevronDown, Compass, Clock, Sparkles, Languages, Clapperboard, Star, WandSparkles, MonitorPlay, Music2 } from "lucide-react";
 import { NavLink, Link } from "react-router-dom";
 import {
   Sidebar,
@@ -21,31 +21,36 @@ const getCategoriesData = () => [
     label: "Browse",
     labelKey: "nav.browse",
     items: [
-      { titleKey: "nav.uploads", url: "/uploads", icon: List },
-      { titleKey: "nav.movies", url: "/movies", icon: Film },
+      { title: "Uploads", url: "/recently-added", icon: Film },
+      { title: "Movies", url: "/type/movie", icon: Clapperboard },
       { titleKey: "nav.tvSeries", url: "/tv-series", icon: Tv },
+      { title: "Anime", url: "/category/animation-series", icon: Sparkles },
+      { title: "Korean", url: "/category/korean", icon: Film },
+      { title: "Chinese", url: "/category/chinese", icon: Tv },
     ],
   },
   {
     label: "Multi Server",
     labelKey: "nav.multiServer",
     items: [
-      { titleKey: "nav.animeya", url: "/animeya", icon: Clapperboard },
+      { title: "Hindi Anime", url: "/hindi", icon: Languages },
+      { title: "AniVexa Player", url: "/anivexa", icon: Compass },
     ],
   },
   {
     label: "Type",
     labelKey: "nav.type",
     items: [
-      { titleKey: "nav.typeMovie", url: "/category/movie", icon: Film },
-      { titleKey: "nav.typeSpecial", url: "/category/special", icon: Star },
-      { titleKey: "nav.typeOva", url: "/category/ova", icon: Sparkles },
-      { titleKey: "nav.typeOna", url: "/category/ona", icon: Monitor },
-      { titleKey: "nav.typeTv", url: "/category/tv", icon: Tv },
-      { titleKey: "nav.typeMusic", url: "/category/music", icon: Music },
+      { title: "Movie", url: "/type/movie", icon: Clapperboard },
+      { title: "Special", url: "/type/special", icon: Star },
+      { title: "OVA", url: "/type/ova", icon: WandSparkles },
+      { title: "ONA", url: "/type/ona", icon: MonitorPlay },
+      { title: "TV", url: "/type/tv", icon: Tv },
+      { title: "Music", url: "/type/music", icon: Music2 },
     ],
   },
 ];
+
 
 const socialLinks = [
   { title: "WhatsApp", url: "https://wa.me/", color: "hover:text-green-500", icon: () => (
@@ -71,11 +76,12 @@ function SidebarNavItem({ item, showText, onNavigate }: { item: { title: string;
         onClick={onNavigate}
         className={({ isActive }) =>
           cn(
-            "flex items-center rounded-lg text-[13px] font-medium transition-all duration-200 relative group",
-            showText ? "gap-3 px-3 py-[13px]" : "justify-center px-0 py-[13px]",
+            "relative flex items-center overflow-hidden rounded-xl text-[13px] font-medium transition-all duration-200 group",
+            "before:absolute before:left-0 before:top-1/2 before:h-0 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-primary before:shadow-[0_0_12px_hsl(var(--primary)/0.9)] before:transition-all before:duration-200",
+            showText ? "gap-3 px-3.5 py-2.5" : "justify-center px-0 py-2.5",
             isActive
-              ? "bg-primary/15 text-primary font-semibold"
-              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+              ? "bg-primary/[0.12] text-primary font-semibold shadow-[inset_0_1px_0_hsl(var(--primary)/0.12),0_8px_24px_hsl(var(--primary)/0.08)] ring-1 ring-primary/15 before:h-5"
+              : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground hover:ring-1 hover:ring-border/40"
           )
         }
       >
@@ -83,7 +89,7 @@ function SidebarNavItem({ item, showText, onNavigate }: { item: { title: string;
           <>
             <item.icon className={cn(
               "h-[18px] w-[18px] flex-shrink-0 transition-colors",
-              isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+              isActive ? "text-primary drop-shadow-[0_0_7px_hsl(var(--primary)/0.6)]" : "text-muted-foreground group-hover:text-foreground group-hover:scale-105"
             )} />
             {showText && <span className="truncate">{item.title}</span>}
           </>
@@ -113,18 +119,18 @@ function CollapsibleCategory({
       {showText ? (
         <button
           onClick={onToggle}
-          className="flex items-center justify-between w-full px-3 py-3 text-[13px] font-semibold text-foreground/70 hover:text-foreground transition-colors"
+          className="flex items-center justify-between w-full px-3.5 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70 hover:text-foreground transition-colors"
         >
           <span>{label}</span>
           <ChevronDown
             className={cn(
-              "h-4 w-4 text-muted-foreground/50 transition-transform duration-200",
+              "h-3.5 w-3.5 text-muted-foreground/50 transition-transform duration-200",
               !isOpen && "-rotate-90"
             )}
           />
         </button>
       ) : (
-        <div className="h-px bg-border/40 mx-3 my-2" />
+        <div className="h-px bg-gradient-to-r from-transparent via-border/60 to-transparent mx-3 my-2" />
       )}
 
       {(isOpen || !showText) && (
@@ -142,7 +148,7 @@ export function AppSidebar() {
   const { open, toggleSidebar } = useSidebar();
   const isMobile = useIsMobile();
   const showText = isMobile || open;
-  const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
+  const [openCategories, setOpenCategories] = useState<Set<string>>(new Set(["Type"]));
   const [showShareIcons, setShowShareIcons] = useState(false);
   const [userProfile, setUserProfile] = useState<{ name: string; avatar: string | null } | null>(null);
   const { t } = useTranslation();
@@ -184,7 +190,7 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border/30">
+    <Sidebar collapsible="icon" className="border-r border-border/30 shadow-[8px_0_30px_hsl(var(--background)/0.16)]">
       <SidebarContent
         className={cn("overflow-hidden relative", sidebarBg ? "custom-bg-image custom-sidebar-overlay" : "sidebar-fancy-bg")}
         style={sidebarBg ? { backgroundImage: `url(${sidebarBg})` } : undefined}
@@ -202,34 +208,36 @@ export function AppSidebar() {
 
         {/* Logo */}
         <div className={cn(
-          "flex items-center gap-3",
+          "flex items-center gap-3 mb-1",
           showText ? "px-4" : "justify-center px-0",
           isMobile ? "py-4 pt-14" : "py-5"
         )}>
-          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary shadow-sm">
+          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary/70 ring-1 ring-primary/30 shadow-[0_0_20px_hsl(var(--primary)/0.28)]">
             <Play className="h-[18px] w-[18px] text-primary-foreground fill-current" />
           </div>
           {showText && (
-            <span className="text-[15px] font-bold tracking-tight text-foreground">
-              Helloflix
-            </span>
+            <div className="min-w-0">
+              <span className="block text-[15px] font-bold tracking-tight text-foreground">Helloflix</span>
+              <span className="block text-[9px] font-semibold uppercase tracking-[0.2em] text-primary/70">Watch freely</span>
+            </div>
           )}
         </div>
 
         {/* Home + Settings row */}
-        <div className={cn(showText ? "px-3" : "px-1")}>
-          <div className="flex items-center gap-1">
+        <div className={cn("mb-1", showText ? "px-3" : "px-1")}>
+          <div className="flex items-center gap-1 rounded-xl border border-border/30 bg-background/20 p-1 shadow-[inset_0_1px_0_hsl(var(--foreground)/0.04)] backdrop-blur-sm">
             <NavLink
               to="/"
               end
               onClick={handleNavigate}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center flex-1 rounded-lg text-[13px] font-medium transition-all duration-200 group",
-                  showText ? "gap-3 px-3 py-[13px]" : "justify-center px-0 py-[13px]",
+                  "relative flex items-center flex-1 rounded-lg text-[13px] font-medium transition-all duration-200 group",
+                  "before:absolute before:left-0 before:top-1/2 before:h-0 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-primary before:shadow-[0_0_12px_hsl(var(--primary)/0.9)] before:transition-all",
+                  showText ? "gap-3 px-3 py-2.5" : "justify-center px-0 py-2.5",
                   isActive
-                    ? "bg-primary/15 text-primary font-semibold"
-                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                    ? "bg-primary/[0.12] text-primary font-semibold shadow-[inset_0_1px_0_hsl(var(--primary)/0.12)] ring-1 ring-primary/15 before:h-5"
+                    : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground hover:ring-1 hover:ring-border/40"
                 )
               }
             >
@@ -237,7 +245,7 @@ export function AppSidebar() {
                 <>
                   <Home className={cn(
                     "h-[18px] w-[18px] flex-shrink-0",
-                    isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                    isActive ? "text-primary drop-shadow-[0_0_7px_hsl(var(--primary)/0.6)]" : "text-muted-foreground group-hover:text-foreground group-hover:scale-105"
                   )} />
                   {showText && <span>{t("nav.home")}</span>}
                 </>
@@ -247,7 +255,8 @@ export function AppSidebar() {
               <Link
                 to="/settings"
                 onClick={handleNavigate}
-                className="flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
+                aria-label="Settings"
+                className="flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all"
               >
                 <Settings className="h-[16px] w-[16px]" />
               </Link>
@@ -257,14 +266,14 @@ export function AppSidebar() {
 
         {/* Divider line */}
         <div className="px-4 py-2">
-          <div className="h-px bg-border/50" />
+          <div className="h-px bg-gradient-to-r from-transparent via-border/70 to-transparent" />
         </div>
 
         {/* Quick links */}
         <SidebarGroup className={cn("pt-0 pb-0", showText ? "px-3" : "px-1")}>
           {showText && (
             <div className="px-3 mb-1.5">
-              <span className="text-[11px] font-medium text-muted-foreground/60 tracking-wide">
+              <span className="text-[10px] font-bold uppercase text-muted-foreground/60 tracking-[0.16em]">
                 {t("nav.quickAccess")}
               </span>
             </div>
@@ -272,20 +281,20 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu className="space-y-[1px]">
               <SidebarNavItem item={{ title: t("nav.recentlyAdded"), url: "/recently-added", icon: Clock }} showText={showText} onNavigate={handleNavigate} />
-              <SidebarNavItem item={{ title: t("nav.hindi"), url: "/hindi", icon: Languages }} showText={showText} onNavigate={handleNavigate} />
+              <SidebarNavItem item={{ title: "Hindi Anime", url: "/hindi", icon: Languages }} showText={showText} onNavigate={handleNavigate} />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         {/* Divider line */}
         <div className="px-4 py-2">
-          <div className="h-px bg-border/50" />
+          <div className="h-px bg-gradient-to-r from-transparent via-border/70 to-transparent" />
         </div>
 
         {/* Menu label (like Firebase's "Product categories") */}
         {showText && (
           <div className="px-6 pb-1">
-            <span className="text-[11px] font-medium text-muted-foreground/60 tracking-wide">
+            <span className="text-[10px] font-bold uppercase text-muted-foreground/60 tracking-[0.16em]">
               {t("nav.menu")}
             </span>
           </div>
@@ -293,14 +302,14 @@ export function AppSidebar() {
 
         {/* Collapsible Categories (Firebase-style) */}
         <div className={cn("flex-1", showText ? "px-3" : "px-1")}>
-          <div className="border border-border/30 rounded-lg overflow-hidden">
+          <div className="border border-border/35 rounded-xl overflow-hidden bg-background/15 shadow-[inset_0_1px_0_hsl(var(--foreground)/0.04),0_10px_30px_hsl(var(--background)/0.12)] backdrop-blur-sm">
             {getCategoriesData().map((cat) => {
-              const items = cat.items.map(item => ({ title: t(item.titleKey), url: item.url, icon: item.icon }));
+              const items = cat.items.map(item => ({ title: "title" in item ? item.title : t(item.titleKey), url: item.url, icon: item.icon }));
               if (items.length === 0) return null;
               return (
                 <CollapsibleCategory
                   key={cat.label}
-                  label={t(cat.labelKey)}
+                  label={cat.label === "Browse" ? t(cat.labelKey) : cat.label}
                   items={items}
                   showText={showText}
                   isOpen={openCategories.has(cat.label)}
@@ -314,7 +323,7 @@ export function AppSidebar() {
 
         {/* Bottom Section */}
         <div className={cn("mt-auto", showText ? "px-3" : "px-1", isMobile ? "pb-20" : "pb-3")}>
-          <div className="h-px bg-border/50 mb-3 mx-1" />
+          <div className="h-px bg-gradient-to-r from-transparent via-border/70 to-transparent mb-3 mx-1" />
 
           {/* Share icons */}
           {showText && (
@@ -327,7 +336,7 @@ export function AppSidebar() {
                   rel="noopener noreferrer"
                   title={social.title}
                   className={cn(
-                    "flex items-center justify-center w-11 h-11 rounded-md text-muted-foreground transition-all duration-200 hover:scale-110",
+                    "flex items-center justify-center w-10 h-9 rounded-lg border border-transparent text-muted-foreground transition-all duration-200 hover:scale-105 hover:border-border/40 hover:bg-foreground/[0.04]",
                     social.color
                   )}
                 >

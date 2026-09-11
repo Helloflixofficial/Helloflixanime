@@ -16,6 +16,7 @@ interface AnimeCardProps {
   subtitle?: string;
   className?: string;
   isDubbed?: boolean;
+  linkPrefix?: string;
 }
 
 const AnimeCard = memo(({
@@ -27,10 +28,11 @@ const AnimeCard = memo(({
   subtitle,
   className = "",
   isDubbed = false,
+  linkPrefix = "/anime",
 }: AnimeCardProps) => {
   return (
     <Link 
-      to={`/anime/${id}`} 
+      to={`${linkPrefix}/${id}`} 
       className={cn(
         "group block transition-all duration-300 ease-out hover:-translate-y-1.5", 
         className

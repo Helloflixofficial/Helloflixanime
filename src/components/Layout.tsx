@@ -3,7 +3,6 @@ import Header from "./Header";
 import BottomNavigation from "./BottomNavigation";
 import { AppSidebar } from "./AppSidebar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import AiringSchedule from "./AiringSchedule";
 
 interface LayoutProps {
   children: ReactNode;
@@ -32,7 +31,6 @@ const Layout = ({ children }: LayoutProps) => {
           <BottomNavigation />
         </div>
 
-        <AiringSchedule />
       </div>
     </SidebarProvider>
   );

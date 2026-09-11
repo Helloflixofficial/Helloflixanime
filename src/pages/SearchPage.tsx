@@ -1,308 +1,191 @@
-import { useState, useEffect, useCallback } from "react";
-import { useSearchParams, Link } from "react-router-dom";
-import { Search, Loader2, Filter, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Filter, Loader2, Search, SlidersHorizontal, X } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import AnimeCard from "@/components/AnimeCard";
-import { searchAnime, getHomeData } from "@/services/animeApi";
+import SearchSuggestions from "@/components/SearchSuggestions";
+import { useSearchSuggestions } from "@/hooks/useSearchSuggestions";
+import { getAnimeByCategory, getGenres, searchAnime } from "@/services/animeApi";
+import type { AnimeBasic } from "@/types/anime";
 
-const GENRE_BUTTONS = [
-  { name: "Action", slug: "action", color: "bg-red-500/15 text-red-400 border-red-500/30 hover:bg-red-500/25" },
-  { name: "Adventure", slug: "adventure", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25" },
-  { name: "Cars", slug: "cars", color: "bg-orange-500/15 text-orange-400 border-orange-500/30 hover:bg-orange-500/25" },
-  { name: "Comedy", slug: "comedy", color: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/25" },
-  { name: "Dementia", slug: "dementia", color: "bg-purple-500/15 text-purple-400 border-purple-500/30 hover:bg-purple-500/25" },
-  { name: "Demons", slug: "demons", color: "bg-rose-600/15 text-rose-400 border-rose-600/30 hover:bg-rose-600/25" },
-  { name: "Drama", slug: "drama", color: "bg-blue-500/15 text-blue-400 border-blue-500/30 hover:bg-blue-500/25" },
-  { name: "Ecchi", slug: "ecchi", color: "bg-pink-500/15 text-pink-400 border-pink-500/30 hover:bg-pink-500/25" },
-  { name: "Fantasy", slug: "fantasy", color: "bg-violet-500/15 text-violet-400 border-violet-500/30 hover:bg-violet-500/25" },
-  { name: "Game", slug: "game", color: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/25" },
-  { name: "Harem", slug: "harem", color: "bg-fuchsia-500/15 text-fuchsia-400 border-fuchsia-500/30 hover:bg-fuchsia-500/25" },
-  { name: "Historical", slug: "historical", color: "bg-amber-600/15 text-amber-400 border-amber-600/30 hover:bg-amber-600/25" },
-  { name: "Horror", slug: "horror", color: "bg-red-700/15 text-red-300 border-red-700/30 hover:bg-red-700/25" },
-  { name: "Isekai", slug: "isekai", color: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/25" },
-  { name: "Josei", slug: "josei", color: "bg-rose-400/15 text-rose-300 border-rose-400/30 hover:bg-rose-400/25" },
-  { name: "Kids", slug: "kids", color: "bg-lime-500/15 text-lime-400 border-lime-500/30 hover:bg-lime-500/25" },
-  { name: "Magic", slug: "magic", color: "bg-purple-600/15 text-purple-300 border-purple-600/30 hover:bg-purple-600/25" },
-  { name: "Martial Arts", slug: "martial-arts", color: "bg-orange-600/15 text-orange-300 border-orange-600/30 hover:bg-orange-600/25" },
-  { name: "Mecha", slug: "mecha", color: "bg-slate-500/15 text-slate-300 border-slate-500/30 hover:bg-slate-500/25" },
-  { name: "Military", slug: "military", color: "bg-green-700/15 text-green-400 border-green-700/30 hover:bg-green-700/25" },
-  { name: "Music", slug: "music", color: "bg-teal-500/15 text-teal-400 border-teal-500/30 hover:bg-teal-500/25" },
-  { name: "Mystery", slug: "mystery", color: "bg-gray-500/15 text-gray-300 border-gray-500/30 hover:bg-gray-500/25" },
-  { name: "Parody", slug: "parody", color: "bg-yellow-600/15 text-yellow-300 border-yellow-600/30 hover:bg-yellow-600/25" },
-  { name: "Police", slug: "police", color: "bg-blue-700/15 text-blue-300 border-blue-700/30 hover:bg-blue-700/25" },
-  { name: "Psychological", slug: "psychological", color: "bg-violet-700/15 text-violet-300 border-violet-700/30 hover:bg-violet-700/25" },
-  { name: "Romance", slug: "romance", color: "bg-pink-400/15 text-pink-300 border-pink-400/30 hover:bg-pink-400/25" },
-  { name: "Samurai", slug: "samurai", color: "bg-red-800/15 text-red-300 border-red-800/30 hover:bg-red-800/25" },
-  { name: "School", slug: "school", color: "bg-sky-500/15 text-sky-400 border-sky-500/30 hover:bg-sky-500/25" },
-  { name: "Sci-Fi", slug: "sci-fi", color: "bg-cyan-600/15 text-cyan-300 border-cyan-600/30 hover:bg-cyan-600/25" },
-  { name: "Seinen", slug: "seinen", color: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30 hover:bg-zinc-500/25" },
-  { name: "Shoujo", slug: "shoujo", color: "bg-pink-600/15 text-pink-300 border-pink-600/30 hover:bg-pink-600/25" },
-  { name: "Shoujo Ai", slug: "shoujo-ai", color: "bg-rose-500/15 text-rose-300 border-rose-500/30 hover:bg-rose-500/25" },
-  { name: "Shounen", slug: "shounen", color: "bg-orange-500/15 text-orange-300 border-orange-500/30 hover:bg-orange-500/25" },
-  { name: "Shounen Ai", slug: "shounen-ai", color: "bg-blue-400/15 text-blue-300 border-blue-400/30 hover:bg-blue-400/25" },
-  { name: "Slice of Life", slug: "slice-of-life", color: "bg-green-500/15 text-green-400 border-green-500/30 hover:bg-green-500/25" },
-  { name: "Space", slug: "space", color: "bg-indigo-600/15 text-indigo-300 border-indigo-600/30 hover:bg-indigo-600/25" },
-  { name: "Sports", slug: "sports", color: "bg-emerald-600/15 text-emerald-300 border-emerald-600/30 hover:bg-emerald-600/25" },
-  { name: "Super Power", slug: "super-power", color: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30 hover:bg-yellow-500/25" },
-  { name: "Supernatural", slug: "supernatural", color: "bg-purple-500/15 text-purple-300 border-purple-500/30 hover:bg-purple-500/25" },
-  { name: "Thriller", slug: "thriller", color: "bg-red-600/15 text-red-300 border-red-600/30 hover:bg-red-600/25" },
-  { name: "Vampire", slug: "vampire", color: "bg-red-900/15 text-red-300 border-red-900/30 hover:bg-red-900/25" },
-];
+type SortOption = "newest" | "oldest" | "az" | "za";
 
-const GENRES = [
-  "Action", "Adventure", "Comedy", "Drama", "Fantasy", "Romance",
-  "Thriller", "Horror", "Sci-Fi", "Slice of Life", "Sports", "Supernatural",
-  "Mecha", "Isekai", "School", "Magic", "Mystery", "Ecchi",
-  "Music", "Psychological",
-];
-
-interface AnimeResult {
-  id: string;
-  title: string;
-  poster: string;
-  tvInfo?: {
-    showType?: string;
-    sub?: number;
-    dub?: number;
-    eps?: number;
-  };
-}
+const getYear = (item: AnimeBasic) =>
+  item.tvInfo?.releaseDate?.match(/\b(?:19|20)\d{2}\b/)?.[0] || "";
 
 const SearchPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialQuery = searchParams.get("q") || "";
+  const urlQuery = searchParams.get("q") || "";
+  const urlGenre = searchParams.get("genre") || "all";
+  const urlYear = searchParams.get("year") || "all";
+  const urlSort = (searchParams.get("sort") as SortOption) || "newest";
 
-  const [searchQuery, setSearchQuery] = useState(initialQuery);
-  const [results, setResults] = useState<AnimeResult[]>([]);
+  const [searchQuery, setSearchQuery] = useState(urlQuery);
+  const [selectedGenre, setSelectedGenre] = useState(urlGenre);
+  const [selectedYear, setSelectedYear] = useState(urlYear);
+  const [sortBy, setSortBy] = useState<SortOption>(urlSort);
+  const [results, setResults] = useState<AnimeBasic[]>([]);
+  const [genres, setGenres] = useState<{ name: string; slug: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
-  const [selectedType, setSelectedType] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [availableGenres, setAvailableGenres] = useState<string[]>(GENRES);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const requestIdRef = useRef(0);
+  const { suggestions, isLoading: suggestionsLoading } = useSearchSuggestions(searchQuery);
 
-  // Load genres from API
-  useEffect(() => {
-    getHomeData().then((data) => {
-      if (data?.genres?.length) setAvailableGenres(data.genres);
-    }).catch(() => {});
+  const years = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: currentYear - 1999 }, (_, index) => String(currentYear - index));
   }, []);
 
-  const doSearch = useCallback(async (q: string, p: number, append = false) => {
-    if (!q.trim()) {
+  useEffect(() => {
+    getGenres().then(setGenres).catch((error) => console.error("Failed to load genres:", error));
+  }, []);
+
+  useEffect(() => {
+    setSearchQuery(urlQuery);
+    setSelectedGenre(urlGenre);
+    setSelectedYear(urlYear);
+    setSortBy(urlSort);
+  }, [urlQuery, urlGenre, urlYear, urlSort]);
+
+  const updateUrl = useCallback((query: string, genre: string, year: string, sort: SortOption) => {
+    const next = new URLSearchParams();
+    if (query.trim()) next.set("q", query.trim());
+    if (genre !== "all") next.set("genre", genre);
+    if (year !== "all") next.set("year", year);
+    if (sort !== "newest") next.set("sort", sort);
+    setSearchParams(next, { replace: true });
+  }, [setSearchParams]);
+
+  const loadResults = useCallback(async (query: string, genre: string, year: string, sort: SortOption) => {
+    const trimmed = query.trim();
+    if (!trimmed && genre === "all") {
       setResults([]);
+      setIsLoading(false);
       return;
     }
+
+    const requestId = ++requestIdRef.current;
     setIsLoading(true);
     try {
-      const data = await searchAnime(q.trim(), p);
-      const items: AnimeResult[] = (data?.data || []).map((item: any) => ({
-        id: item.id,
-        title: item.title,
-        poster: item.poster,
-        tvInfo: item.tvInfo,
-      }));
-      setResults((prev) => (append ? [...prev, ...items] : items));
-      setHasMore(data?.hasNextPage ?? false);
-    } catch {
-      if (!append) setResults([]);
+      const response = genre !== "all" ? await getAnimeByCategory(genre, 1) : await searchAnime(trimmed, 1);
+      if (requestId !== requestIdRef.current) return;
+
+      let nextResults = response.data || [];
+      if (genre !== "all" && trimmed) {
+        const normalizedQuery = trimmed.toLowerCase();
+        nextResults = nextResults.filter((item) => item.title.toLowerCase().includes(normalizedQuery));
+      }
+      if (year !== "all") nextResults = nextResults.filter((item) => getYear(item) === year);
+
+      nextResults = [...nextResults].sort((a, b) => {
+        if (sort === "az") return a.title.localeCompare(b.title);
+        if (sort === "za") return b.title.localeCompare(a.title);
+        const aDate = Date.parse(a.tvInfo?.releaseDate || "") || 0;
+        const bDate = Date.parse(b.tvInfo?.releaseDate || "") || 0;
+        return sort === "oldest" ? aDate - bDate : bDate - aDate;
+      });
+      setResults(nextResults);
+    } catch (error) {
+      if (requestId === requestIdRef.current) {
+        console.error("Search failed:", error);
+        setResults([]);
+      }
     } finally {
-      setIsLoading(false);
+      if (requestId === requestIdRef.current) setIsLoading(false);
     }
   }, []);
 
-  // Search on mount / query param change
   useEffect(() => {
-    if (initialQuery) {
-      setSearchQuery(initialQuery);
-      setPage(1);
-      doSearch(initialQuery, 1);
-    }
-  }, [initialQuery, doSearch]);
+    const timer = window.setTimeout(() => loadResults(searchQuery, selectedGenre, selectedYear, sortBy), 350);
+    return () => window.clearTimeout(timer);
+  }, [loadResults, searchQuery, selectedGenre, selectedYear, sortBy]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(1);
-    setSearchParams(searchQuery.trim() ? { q: searchQuery.trim() } : {});
-    doSearch(searchQuery, 1);
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    setShowSuggestions(false);
+    updateUrl(searchQuery, selectedGenre, selectedYear, sortBy);
   };
 
-  const loadMore = () => {
-    const next = page + 1;
-    setPage(next);
-    doSearch(searchQuery, next, true);
+  const handleFilterChange = (kind: "genre" | "year" | "sort", value: string) => {
+    const nextGenre = kind === "genre" ? value : selectedGenre;
+    const nextYear = kind === "year" ? value : selectedYear;
+    const nextSort = (kind === "sort" ? value : sortBy) as SortOption;
+    if (kind === "genre") setSelectedGenre(value);
+    if (kind === "year") setSelectedYear(value);
+    if (kind === "sort") setSortBy(nextSort);
+    updateUrl(searchQuery, nextGenre, nextYear, nextSort);
   };
 
-  const handleGenreToggle = (genre: string) => {
-    setSelectedGenres((prev) =>
-      prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]
-    );
+  const clearFilters = () => {
+    setSelectedGenre("all");
+    setSelectedYear("all");
+    setSortBy("newest");
+    updateUrl(searchQuery, "all", "all", "newest");
   };
 
-  // Client-side filtering
-  const filtered = results.filter((anime) => {
-    if (selectedType && anime.tvInfo?.showType?.toLowerCase() !== selectedType.toLowerCase()) {
-      return false;
-    }
-    // Genre filter is client-side best-effort (API doesn't return genres in search)
-    return true;
-  });
+  const hasFilters = selectedGenre !== "all" || selectedYear !== "all" || sortBy !== "newest";
+  const hasSearch = searchQuery.trim().length > 0 || hasFilters;
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-7xl">
-      {/* Search Header */}
+    <div className="container mx-auto max-w-7xl px-4 py-6">
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-glow mb-2">Search Anime</h1>
+        <h1 className="mb-2 text-2xl font-bold text-glow md:text-3xl">Search Series & Anime</h1>
+        <p className="text-sm text-muted-foreground">Search by title, then narrow the results by genre, year, or order.</p>
       </div>
 
-      {/* Search Form */}
-      <form onSubmit={handleSubmit} className="flex gap-2 mb-6">
+      <form onSubmit={handleSubmit} className="mb-4 flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Type anime name..."
+            placeholder="Try Naruto, One Piece, or Jobless..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 h-11"
+            onChange={(event) => { setSearchQuery(event.target.value); setShowSuggestions(true); }}
+            onFocus={() => setShowSuggestions(true)}
+            className="h-11 rounded-xl border-border/50 bg-card/60 pl-10 pr-10 backdrop-blur-sm focus:border-primary/40 focus:ring-primary/20"
             autoFocus
           />
+          {searchQuery && (
+            <button type="button" aria-label="Clear search" onClick={() => { setSearchQuery(""); setShowSuggestions(false); updateUrl("", selectedGenre, selectedYear, sortBy); }} className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          )}
+          {showSuggestions && searchQuery.trim().length >= 2 && (
+            <SearchSuggestions suggestions={suggestions} isLoading={suggestionsLoading} query={searchQuery} onSelect={() => setShowSuggestions(false)} />
+          )}
         </div>
-        <Button type="submit" className="h-11 px-6">Search</Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="h-11"
-          onClick={() => setShowFilters(!showFilters)}
-        >
-          <Filter className="h-4 w-4" />
-        </Button>
+        <Button type="submit" className="h-11 rounded-xl px-6">Search</Button>
       </form>
 
-      {/* Genre Buttons */}
-      <div className="mb-6">
-        <h3 className="text-sm font-medium text-muted-foreground mb-3">Browse by Genre</h3>
-        <div className="flex flex-wrap gap-2">
-          {GENRE_BUTTONS.map((genre) => (
-            <Link
-              key={genre.slug}
-              to={`/genre/${genre.slug}`}
-              className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 ${genre.color}`}
-            >
-              {genre.name}
-            </Link>
-          ))}
+      <div className="mb-7 rounded-xl border border-border/40 bg-card/35 p-3 shadow-sm backdrop-blur-sm">
+        <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"><SlidersHorizontal className="h-3.5 w-3.5 text-primary" />Filters</div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <label className="flex items-center gap-2 rounded-lg border border-border/35 bg-background/25 px-3 py-2 text-xs text-muted-foreground">
+            <Filter className="h-3.5 w-3.5 shrink-0 text-primary" /><span className="shrink-0">Genre</span>
+            <select value={selectedGenre} onChange={(event) => handleFilterChange("genre", event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none"><option value="all">All genres</option>{genres.map((genre) => <option key={genre.slug} value={genre.slug}>{genre.name}</option>)}</select>
+          </label>
+          <label className="flex items-center gap-2 rounded-lg border border-border/35 bg-background/25 px-3 py-2 text-xs text-muted-foreground">
+            <span className="shrink-0 font-semibold text-primary">YEAR</span>
+            <select value={selectedYear} onChange={(event) => handleFilterChange("year", event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none"><option value="all">All years</option>{years.map((year) => <option key={year} value={year}>{year}</option>)}</select>
+          </label>
+          <label className="flex items-center gap-2 rounded-lg border border-border/35 bg-background/25 px-3 py-2 text-xs text-muted-foreground">
+            <span className="shrink-0 font-semibold text-primary">SORT</span>
+            <select value={sortBy} onChange={(event) => handleFilterChange("sort", event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="az">Title A-Z</option><option value="za">Title Z-A</option></select>
+          </label>
         </div>
+        {hasFilters && <button type="button" onClick={clearFilters} className="mt-3 text-xs font-medium text-primary transition-colors hover:text-primary/80">Clear filters</button>}
       </div>
 
-      {showFilters && (
-        <div className="anime-card p-4 mb-6 space-y-4 animate-in slide-in-from-top-2">
-          {/* Type filter */}
-          <div>
-            <p className="text-sm font-medium mb-2">Type</p>
-            <div className="flex flex-wrap gap-2">
-              {["", "TV", "Movie", "OVA", "ONA", "Special"].map((t) => (
-                <Badge
-                  key={t || "all"}
-                  variant={selectedType === t ? "default" : "outline"}
-                  className="cursor-pointer"
-                  onClick={() => setSelectedType(t)}
-                >
-                  {t || "All"}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          {/* Genre filter */}
-          <div>
-            <p className="text-sm font-medium mb-2">
-              Genres
-              {selectedGenres.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="ml-2 h-5 text-xs text-muted-foreground"
-                  onClick={() => setSelectedGenres([])}
-                >
-                  <X className="h-3 w-3 mr-1" /> Clear
-                </Button>
-              )}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {availableGenres.map((genre) => (
-                <Badge
-                  key={genre}
-                  variant={selectedGenres.includes(genre) ? "default" : "outline"}
-                  className="cursor-pointer text-xs"
-                  onClick={() => handleGenreToggle(genre)}
-                >
-                  {genre}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        </div>
+      {genres.length > 0 && !hasSearch && (
+        <div className="mb-6"><h3 className="mb-3 text-sm font-medium text-muted-foreground">Browse by Genre</h3><div className="flex flex-wrap gap-2">{genres.map((genre) => <button key={genre.slug} type="button" onClick={() => handleFilterChange("genre", genre.slug)} className="inline-flex items-center rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20">{genre.name}</button>)}</div></div>
       )}
 
-      {/* Results count */}
-      {searchQuery.trim() && !isLoading && (
-        <p className="text-sm text-muted-foreground mb-4">
-          {filtered.length} result{filtered.length !== 1 ? "s" : ""} found
-          {searchQuery && ` for "${searchQuery}"`}
-        </p>
-      )}
-
-      {/* Loading */}
-      {isLoading && results.length === 0 && (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-3 text-muted-foreground">Searching...</span>
-        </div>
-      )}
-
-      {/* Results Grid */}
-      {filtered.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-          {filtered.map((anime) => (
-            <AnimeCard
-              key={anime.id}
-              id={anime.id}
-              title={anime.title}
-              image={anime.poster}
-              type={anime.tvInfo?.showType}
-              episodes={anime.tvInfo?.eps || anime.tvInfo?.sub}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* No results */}
-      {!isLoading && searchQuery.trim() && filtered.length === 0 && (
-        <div className="text-center py-20">
-          <Search className="h-12 w-12 mx-auto text-muted-foreground/40 mb-4" />
-          <p className="text-lg font-medium">No anime found</p>
-          <p className="text-sm text-muted-foreground mt-1">Try a different search term</p>
-        </div>
-      )}
-
-      {/* Load More */}
-      {hasMore && !isLoading && (
-        <div className="flex justify-center mt-8">
-          <Button variant="outline" onClick={loadMore}>
-            Load More
-          </Button>
-        </div>
-      )}
-
-      {isLoading && results.length > 0 && (
-        <div className="flex justify-center mt-6">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
-      )}
+      {hasSearch && !isLoading && <p className="mb-4 text-sm text-muted-foreground">{results.length} result{results.length !== 1 ? "s" : ""} found{searchQuery.trim() ? ` for "${searchQuery.trim()}"` : ""}</p>}
+      {isLoading && <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /><span className="ml-3 text-muted-foreground">Searching...</span></div>}
+      {!isLoading && results.length > 0 && <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">{results.map((item) => <AnimeCard key={item.id} id={item.id} title={item.title} image={item.poster} year={Number(getYear(item)) || undefined} subtitle="SUB" isDubbed={!!item.tvInfo?.dub} />)}</div>}
+      {!isLoading && hasSearch && results.length === 0 && <div className="py-20 text-center"><Search className="mx-auto mb-4 h-12 w-12 text-muted-foreground/40" /><p className="text-lg font-medium">No series found</p><p className="mt-1 text-sm text-muted-foreground">Try another title or remove one of the filters.</p></div>}
+      {!isLoading && !hasSearch && <div className="py-14 text-center text-sm text-muted-foreground">Start typing to search the full catalog.</div>}
     </div>
   );
 };

@@ -6,6 +6,7 @@ import { Flame, Clock, Star, Heart, CheckCircle, TrendingUp, Sparkles } from "lu
 import { getHomeData } from "@/services/animeApi";
 import type { HomeData } from "@/types/anime";
 import { useTranslation } from "react-i18next";
+import AniVexaHomeRail from "@/components/AniVexaHomeRail";
 
 const Index = () => {
   const { t } = useTranslation();
@@ -43,6 +44,8 @@ const Index = () => {
       style={homeBg ? { backgroundImage: `url(${homeBg})`, backgroundAttachment: "fixed" } : undefined}
     >
       <HeroSection />
+
+      <AniVexaHomeRail animeList={homeData?.spotlights?.length ? homeData.spotlights : homeData?.trending || []} loading={loading} />
 
       {/* Continue Watching — only shows for logged-in users with history */}
       <ContinueWatching />

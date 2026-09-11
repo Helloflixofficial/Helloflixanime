@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useLocation, useNavigate } from "react-router-dom";
+import { getAuthErrorMessage, getAuthRedirectUrl, supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,8 +47,14 @@ const Auth = () => {
   const [username, setUsername] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { user: authUser, loading: authLoading } = useAuth();
+
+  const getDestination = () => {
+    const from = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
+    return from?.pathname ? `${from.pathname}${from.search ?? ""}` : "/profile";
+  };
 
   // Redirect to profile if already logged in
   useEffect(() => {
@@ -73,18 +79,22 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth`,
+          redirectTo: getAuthRedirectUrl(),
+          // Navigate explicitly so the flow also works when the browser blocks
+          // Supabase's automatic location change.
+          skipBrowserRedirect: true,
         },
       });
       if (error) throw error;
-    } catch (error: any) {
+      if (data.url) window.location.assign(data.url);
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Google sign-in failed",
-        description: error.message,
+        description: getAuthErrorMessage(error),
       });
     } finally {
       setGoogleLoading(false);
@@ -104,12 +114,12 @@ const Auth = () => {
         title: "Welcome back!",
         description: "You've successfully logged in.",
       });
-      navigate("/profile");
-    } catch (error: any) {
+      navigate(getDestination(), { replace: true });
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Login failed",
-        description: error.message,
+        description: getAuthErrorMessage(error),
       });
     } finally {
       setLoading(false);
@@ -120,28 +130,31 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: { username },
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: getAuthRedirectUrl(),
         },
       });
       if (error) throw error;
-      toast({
-        title: "Account created!",
-        description: "Welcome to Helloflix. You can now login.",
-      });
-      setEmail("");
-      setPassword("");
-      setUsername("");
-      setIsLogin(true);
-    } catch (error: any) {
+      if (data.session) {
+        toast({ title: "Account created!", description: "Welcome to Helloflix." });
+        navigate(getDestination(), { replace: true });
+      } else {
+        toast({
+          title: "Check your email",
+          description: "Click the confirmation link to finish creating your account.",
+        });
+        setPassword("");
+        setIsLogin(true);
+      }
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Signup failed",
-        description: error.message,
+        description: getAuthErrorMessage(error),
       });
     } finally {
       setLoading(false);
@@ -159,22 +172,19 @@ const Auth = () => {
     }
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/profile`,
-        },
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: getAuthRedirectUrl("/reset-password"),
       });
       if (error) throw error;
       toast({
         title: "Check your email",
-        description: "We've sent you a direct magic link to sign in and change your password.",
+        description: "We've sent a password reset link to your email.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message,
+        description: getAuthErrorMessage(error),
       });
     } finally {
       setLoading(false);

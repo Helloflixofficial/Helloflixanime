@@ -347,16 +347,18 @@ export default function Player({
       // ignore
     }
 
-    // Initialize the player directly with primary proxy — no pre-checking
+    // Initialize the player directly with the primary proxy. HLS needs the
+    // custom hls.js adapter; ordinary MP4/WebM files must stay native video.
     const initPlayer = async () => {
       if (destroyed) return;
 
       const videoUrl = buildProxiedUrl(streamUrl, headers);
+      const isHls = streamInfo?.mediaType === "hls" || /\.m3u8(?:$|[?#])/i.test(streamUrl);
 
       const art = new Artplayer({
         url: videoUrl,
         container: artRef.current!,
-        type: "m3u8",
+        type: isHls ? "m3u8" : "mp4",
         autoplay: autoPlay,
         volume: 1,
         setting: true,
@@ -499,7 +501,7 @@ export default function Player({
           fullscreenOn: fullScreenOnIcon,
           fullscreenOff: fullScreenOffIcon,
         },
-        customType: { m3u8: playM3u8 },
+        customType: isHls ? { m3u8: playM3u8 } : undefined,
       });
 
       art.on("resize", () => {

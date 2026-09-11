@@ -234,35 +234,20 @@ CREATE INDEX idx_follows_following ON public.follows(following_id);
 ```
 
 ## Step 2: Code Refactoring (Completed)
-I have already updated several files in your project to use the environment variable `VITE_SUPABASE_URL` instead of hardcoded URLs from your old project. This ensures that features like video proxies and edge functions work with your new project automatically.
+The app now uses the sibling HindMovies Vercel API as its single catalog/playback API and the sibling Cloudflare Worker for streamed mirror URLs.
 
 **Files updated:**
 - `src/config/api.ts`
-- `src/services/tatakaiApi.ts`
-- `src/services/peertubeApi.ts`
-- `src/services/hindiApi.ts`
 - `src/services/animeApi.ts`
-- `src/components/PeerTubePlayer.tsx`
+- `src/config/api.ts`
 
-## Step 3: Edge Functions Deployment
-Your project relies on several edge functions for video playback and data fetching. You need to deploy these to your new project.
+## Step 3: API Configuration
+Set these variables in `.env` if you need to override the deployed sibling services:
 
-**Deployment Commands:**
-1. Open your terminal in the project root.
-2. Run `supabase login` (if not already logged in).
-3. Run `supabase link --project-ref <YOUR_NEW_PROJECT_REF>`
-4. Deploy each function:
-   - `supabase functions deploy embed-proxy`
-   - `supabase functions deploy hindi-proxy`
-   - `supabase functions deploy m3u8-proxy`
-   - `supabase functions deploy peertube-proxy`
-   - `supabase functions deploy tatakai-proxy`
-
-5. **Set Edge Function Secrets**:
-   Since I updated the edge functions to be more secure, you need to set the API URL as a secret in your new Supabase project:
-   ```bash
-   supabase secrets set TATAKAI_API_URL="https://tatakaiapi-one.vercel.app/api/v1"
-   ```
+```env
+VITE_HINDMOVIES_API_URL=https://hindmovies-zeta.vercel.app
+VITE_HINDMOVIES_VIDEO_PROXY_URL=https://hindmovies.abdullahdaniyal.workers.dev/?url=
+```
 
 ## Step 4: Final Checklist
 To ensure everything works perfectly:

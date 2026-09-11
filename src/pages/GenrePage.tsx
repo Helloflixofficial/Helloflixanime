@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import AnimeCard from "@/components/AnimeCard";
 import { getAnimeByCategory } from "@/services/animeApi";
+import type { AnimeBasic } from "@/types/anime";
 
 const GenrePage = () => {
   const { genreName } = useParams<{ genreName: string }>();
@@ -59,13 +60,13 @@ const GenrePage = () => {
       ) : animes.length > 0 ? (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {animes.map((anime: any) => (
+            {animes.map((anime: AnimeBasic) => (
               <AnimeCard
                 key={anime.id}
                 id={anime.id}
-                title={anime.name || anime.title}
-                image={anime.poster || anime.image}
-                type={anime.type}
+                title={anime.title}
+                image={anime.poster}
+                type={anime.tvInfo?.showType}
               />
             ))}
           </div>

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { getAuthErrorMessage, supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
 interface AuthContextType {
@@ -35,54 +35,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    
-    // Determine if we're currently processing an OAuth or Magic Link redirect
-    // If so, we want to stay in loading state longer to let the listener catch it
-    const isAuthCallback = 
-      window.location.hash.includes("access_token=") ||
-      window.location.search.includes("code=");
 
-    // Safety timeout: if auth never resolves, stop loading
-    const safetyTimeout = setTimeout(() => {
-      if (mounted && loading) {
-        console.warn("AuthProvider: Session resolution timed out after 8s");
-        setLoading(false);
-      }
-    }, 8000);
+    const safetyTimeout = window.setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 10000);
 
-    // 1. Get the current session first
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      if (!mounted) return;
-      console.log("AuthProvider: getSession →", currentSession ? "session exists" : "no session");
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      
-      // If we are in an auth callback, don't clear loading here.
-      // Wait for onAuthStateChange to fire SIGNED_IN.
-      if (!isAuthCallback) {
-        setLoading(false);
-      }
-      clearTimeout(safetyTimeout);
-    });
-
-    // 2. Listen for auth state changes (login, logout, token refresh)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, newSession) => {
       if (!mounted) return;
-      console.log("AuthProvider: onAuthStateChange →", _event, newSession ? "session exists" : "no session");
       setSession(newSession);
       setUser(newSession?.user ?? null);
-      // Only clear loading if it's still true (getSession may have already done it)
       setLoading(false);
     });
+
+    const resolveSession = async () => {
+      try {
+        // Supabase handles implicit and PKCE callback URLs during client
+        // initialization because detectSessionInUrl is enabled in the client.
+        // getSession waits for that initialization before returning.
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        if (!mounted) return;
+
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
+      } catch (error) {
+        if (mounted) {
+          console.error('Auth session initialization failed:', getAuthErrorMessage(error));
+          setSession(null);
+          setUser(null);
+        }
+      } finally {
+        if (mounted) {
+          clearTimeout(safetyTimeout);
+          setLoading(false);
+        }
+      }
+    };
+
+    void resolveSession();
 
     return () => {
       mounted = false;
       clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const signOut = useCallback(async () => {
     try {
