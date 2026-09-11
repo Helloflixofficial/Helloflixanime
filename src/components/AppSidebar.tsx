@@ -190,27 +190,26 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border/30 shadow-[8px_0_30px_hsl(var(--background)/0.16)]">
+    <Sidebar collapsible="icon" className="border-r border-border/30 overflow-visible shadow-[8px_0_30px_hsl(var(--background)/0.16)]">
+      {/* Mobile Close Button (floats outside on the right of the sidebar overlay) */}
+      {isMobile && (
+        <button
+          onClick={toggleSidebar}
+          aria-label="Close sidebar"
+          className="absolute top-4 left-[calc(100%+16px)] z-50 flex items-center justify-center w-10 h-10 rounded-full bg-black/60 border border-white/20 text-white hover:bg-black/80 shadow-lg active:scale-95 transition-all duration-200"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      )}
       <SidebarContent
-        className={cn("overflow-hidden relative", sidebarBg ? "custom-bg-image custom-sidebar-overlay" : "sidebar-fancy-bg")}
+        className={cn("overflow-y-auto relative", sidebarBg ? "custom-bg-image custom-sidebar-overlay" : "sidebar-fancy-bg")}
         style={sidebarBg ? { backgroundImage: `url(${sidebarBg})` } : undefined}
       >
-        {/* Mobile Close Button */}
-        {isMobile && (
-          <button
-            onClick={toggleSidebar}
-            aria-label="Close sidebar"
-            className="absolute top-3 right-3 z-50 flex items-center justify-center w-9 h-9 rounded-full bg-muted/80 text-muted-foreground hover:bg-accent hover:text-foreground transition-all duration-200"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
-
         {/* Logo */}
         <div className={cn(
           "flex items-center gap-3 mb-1",
           showText ? "px-4" : "justify-center px-0",
-          isMobile ? "py-4 pt-14" : "py-5"
+          isMobile ? "py-4 pt-4" : "py-5"
         )}>
           <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary/70 ring-1 ring-primary/30 shadow-[0_0_20px_hsl(var(--primary)/0.28)]">
             <Play className="h-[18px] w-[18px] text-primary-foreground fill-current" />
